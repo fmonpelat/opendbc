@@ -1,0 +1,116 @@
+from opendbc.car import Bus, CanBusBase, structs
+from opendbc.can.parser import CANParser
+from opendbc.car.common.conversions import Conversions as CV
+from opendbc.car.interfaces import CarStateBase
+from opendbc.car.gwm.values import DBC
+import copy
+
+GearShifter = structs.CarState.GearShifter
+TransmissionType = structs.CarParams.TransmissionType
+
+
+class CarState(CarStateBase):
+  def __init__(self, CP, CP_SP):
+    super().__init__(CP, CP_SP)
+    self.steer_and_ap_stalk_msg = {}
+    self.eps_stock_values = {}
+    self.camera_stock_values = {}
+    self.longitudinal_stock_values = {}
+    self.hud_stock_values = {}
+
+    self.is_activation_lever_pulled = False
+    self.prev_activation_lever_pulled = False
+    self.main_on = False
+    self.pcm_cruise_enabled = False
+    self.steer_fault_temporary_counter = 0
+
+  def update(self, can_parsers) -> tuple[structs.CarState, structs.CarStateSP]:
+    cp = can_parsers[Bus.main]
+    cp_cam = can_parsers[Bus.cam]
+    ret = structs.CarState()
+    ret_sp = structs.CarStateSP()
+
+    self.steer_and_ap_stalk_msg = copy.copy(cp.vl["STEER_AND_AP_STALK"])
+    self.eps_stock_values = copy.copy(cp.vl["RX_FROM_EPS_162"])
+    self.camera_stock_values = copy.copy(cp_cam.vl["STEER_CMD"])
+    self.longitudinal_stock_values = copy.copy(cp_cam.vl["ACC_CMD"])
+    self.hud_stock_values = copy.copy(cp_cam.vl["LATERAL_STATE"])
+
+    self.parse_wheel_speeds(ret,
+      cp.vl["WHEEL_SPEEDS"]["FRONT_LEFT_WHEEL_SPEED"],
+      cp.vl["WHEEL_SPEEDS"]["FRONT_RIGHT_WHEEL_SPEED"],
+      cp.vl["WHEEL_SPEEDS"]["REAR_LEFT_WHEEL_SPEED"],
+      cp.vl["WHEEL_SPEEDS"]["REAR_RIGHT_WHEEL_SPEED"]
+    )
+
+    # ret.accFaulted = bool(cp_cam.vl["ACC"]["CRUISE_STATE_2"] == 0)
+    ret.cruiseState.speed = cp_cam.vl["ACC"]["ACC_SPEED_SELECTION"]  * CV.KPH_TO_MS
+    if not self.CP.openpilotLongitudinalControl:
+      ret.cruiseState.speed = -1
+
+    ret.standstill = abs(ret.vEgoRaw) < 1e-3
+    ret.gasPressed = cp.vl["CAR_OVERALL_SIGNALS2"]["GAS_POSITION"] > 0
+    ret.brakePressed = cp.vl["BRAKE2"]["PEDAL_BRAKE_PRESSED"] != 0
+    ret.parkingBrake = cp.vl["CAR_OVERALL_SIGNALS"]["DRIVE_MODE"] == 0
+
+    ret.gearShifter = GearShifter.drive if int(cp.vl["CAR_OVERALL_SIGNALS"]["DRIVE_MODE"]) == 1 else \
+                      GearShifter.neutral if int(cp.vl["CAR_OVERALL_SIGNALS"]["DRIVE_MODE"]) == 2 else \
+                      GearShifter.reverse if int(cp.vl["CAR_OVERALL_SIGNALS"]["DRIVE_MODE"]) == 3 else \
+                      GearShifter.park
+
+    ret.steeringAngleDeg = cp.vl["STEER_AND_AP_STALK"]["STEERING_ANGLE"] * (-1 if cp.vl["STEER_AND_AP_STALK"]["STEERING_DIRECTION"] else 1)
+    ret.steeringRateDeg = cp.vl["STEER_AND_AP_STALK"]["STEERING_RATE"] * (-1 if (cp.vl["STEER_AND_AP_STALK"]["RATE_DIRECTION"] > 0) else 1)
+
+    # Since loopback was throwing a CanError even though the logic expected cp_loopback.vl_vall > 0, I moved the detection to interface.py against lat_active.
+    ret.steerFaultTemporary = False # (bool(cp_loopback.vl["STEER_CMD"]["STEER_REQUEST"]) and bool(cp.vl["RX_STEER_RELATED"]["A_RX_STEER_REQUESTED"] != 1))
+    # self.steer_fault_temporary_counter = (self.steer_fault_temporary_counter + 1) if (cp.vl["RX_STEER_RELATED"]["EPS_FAULT_PERMANENT"] == 1) else 0
+    ret.steerFaultTemporary |= self.steer_fault_temporary_counter > 100
+    ret.steerFaultPermanent = False #self.steer_fault_permanent_counter > 500
+
+    ret.steeringTorque = cp.vl["RX_FROM_EPS_162"]["RX_DRIVER_TORQUE"]
+    ret.steeringTorqueEps = cp.vl["RX_FROM_EPS_162"]["RX_EPS_TORQUE"]
+    ret.steeringPressed = abs(ret.steeringTorque) > 50
+
+    ret.doorOpen = any([cp.vl["DOOR_DRIVER"]["DOOR_REAR_RIGHT_OPEN"],
+                        cp.vl["DOOR_DRIVER"]["DOOR_FRONT_RIGHT_OPEN"],
+                        cp.vl["DOOR_DRIVER"]["DOOR_REAR_LEFT_OPEN"],
+                        cp.vl["DOOR_DRIVER"]["DOOR_DRIVER_OPEN"]])
+    ret.seatbeltUnlatched = bool(cp.vl["SEATBELT"]["SEAT_BELT_DRIVER_STATE"])
+    ret.leftBlinker, ret.rightBlinker = self.update_blinker_from_lamp(50, cp.vl["LIGHTS"]["LEFT_TURN_SIGNAL"],
+                                                                      cp.vl["LIGHTS"]["RIGHT_TURN_SIGNAL"])
+    ret.leftBlindspot = bool(cp.vl["RADAR_BEHIND"]["BSM_LEFT"] > 0)
+    ret.rightBlindspot = bool(cp.vl["RADAR_BEHIND"]["BSM_RIGHT"] > 0)
+
+    if cp.vl["STEER_AND_AP_STALK"]["JOLION_CRUISEMAIN_OFF"]:
+      self.main_on = False
+    self.is_activation_lever_pulled = bool(cp.vl["STEER_AND_AP_STALK"]["JOLION_CRUISEMAIN_ON"])
+    if not self.is_activation_lever_pulled and self.prev_activation_lever_pulled and not self.main_on:
+      self.main_on = True
+    self.prev_activation_lever_pulled = self.is_activation_lever_pulled
+    ret.cruiseState.available = self.main_on
+
+    if self.main_on:
+      if ((cp.vl["STEER_AND_AP_STALK"]["AP_DECREASE_SPEED_COMMAND"]) or (cp.vl["STEER_AND_AP_STALK"]["AP_INCREASE_SPEED_COMMAND"])):
+        self.pcm_cruise_enabled = True
+    else:
+      self.pcm_cruise_enabled = False
+    if ret.brakePressed:
+      self.pcm_cruise_enabled = False
+    ret.cruiseState.enabled = self.pcm_cruise_enabled
+
+    return ret, ret_sp
+
+  @staticmethod
+  def get_can_parsers(CP, CP_SP):
+    # Compute bus offset from number of safetyConfigs so multipanda setups
+    # (internal + external pandas) map DBCs to the correct physical bus.
+    can_base = CanBusBase(CP, None)
+    main_bus = can_base.offset
+    adas_bus = can_base.offset + 1
+    cam_bus = can_base.offset + 2
+
+    return {
+      Bus.main: CANParser(DBC[CP.carFingerprint][Bus.pt], [], main_bus),
+      Bus.adas: CANParser(DBC[CP.carFingerprint][Bus.pt], [], adas_bus),
+      Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], [], cam_bus),
+    }

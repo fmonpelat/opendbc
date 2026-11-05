@@ -1019,6 +1019,15 @@ class SafetyTest(SafetyTestBase):
             if attr == 'TestVolkswagenMqbLongSafety' and current_test.startswith('TestHondaBoschRadarless'):
               tx = list(filter(lambda m: m[0] not in [0x30c, ], tx))
 
+            # Volkswagen MQB and GWM STEER_CMD messages overlap
+            if attr == 'TestGwmSafety' and current_test.startswith('TestVolkswagenMqbStockSafety'):
+              tx = list(filter(lambda m: m[0] not in [0x12b, ], tx))
+
+            # Rivian and GWM (Jolion EPS feedback) 0x162 messages overlap on bus 2
+            if (attr.startswith('TestRivian') and current_test.startswith('TestGwm')) or \
+               (attr.startswith('TestGwm') and current_test.startswith('TestRivian')):
+              tx = list(filter(lambda m: m[0] not in [0x162, ], tx))
+
             # TODO: Temporary, should be fixed in panda firmware, safety_honda.h
             if attr.startswith('TestHonda'):
               # exceptions for common msgs across different hondas

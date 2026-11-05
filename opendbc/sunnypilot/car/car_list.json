@@ -1004,6 +1004,33 @@
     ],
     "package": "Driver Alert Package II"
   },
+  "Haval H6 2019-26": {
+    "platform": "GWM_HAVAL_H6",
+    "make": "Haval",
+    "brand": "gwm",
+    "model": "H6",
+    "year": [
+      "2019",
+      "2020",
+      "2021",
+      "2022",
+      "2023",
+      "2024",
+      "2025",
+      "2026"
+    ],
+    "package": "Adaptive Cruise Control (ACC) & Lane Assist"
+  },
+  "Haval Jolion HEV 2026": {
+    "platform": "GWM_HAVAL_JOLION_HEV",
+    "make": "Haval",
+    "brand": "gwm",
+    "model": "Jolion HEV",
+    "year": [
+      "2026"
+    ],
+    "package": "Adaptive Cruise Control (ACC) & Lane Assist"
+  },
   "Honda Accord 2018-22": {
     "platform": "HONDA_ACCORD",
     "make": "Honda",
