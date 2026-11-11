@@ -45,7 +45,7 @@ class CAR(Platforms):
   )
   GWM_HAVAL_JOLION_HEV = GWMPlatformConfig(
     [GWMCarDocs("Haval Jolion HEV 2026")],
-    CarSpecs(wheelbase=2.700, steerRatio=17.416),
+    CarSpecs(wheelbase=2.700, steerRatio=18.6),  # learned by paramsd on the car: 18.59 +- 0.10
   )
 
 
