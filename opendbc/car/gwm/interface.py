@@ -2,7 +2,8 @@ from opendbc.car import structs, get_safety_config, CanBusBase, Bus, create_butt
 from opendbc.car.interfaces import CarInterfaceBase
 from opendbc.car.gwm.carcontroller import CarController
 from opendbc.car.gwm.carstate import CarState
-from opendbc.car.gwm.values import GwmSafetyFlags
+from opendbc.car.gwm.radar_interface import RadarInterface
+from opendbc.car.gwm.values import CAR, GwmSafetyFlags
 
 ButtonType = structs.CarState.ButtonEvent.Type
 TransmissionType = structs.CarParams.TransmissionType
@@ -11,6 +12,7 @@ TransmissionType = structs.CarParams.TransmissionType
 class CarInterface(CarInterfaceBase):
   CarState = CarState
   CarController = CarController
+  RadarInterface = RadarInterface
 
   def __init__(self, CP, CP_SP):
       super().__init__(CP, CP_SP)
@@ -71,7 +73,13 @@ class CarInterface(CarInterfaceBase):
     ret.steerControlType = structs.CarParams.SteerControlType.torque
     CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
-    ret.radarUnavailable = True
+    # The Jolion camera publishes its fused radar target in 0x2B8 (see radar_interface.py). Not verified on the H6.
+    ret.radarUnavailable = candidate != CAR.GWM_HAVAL_JOLION_HEV
+
+    # Jolion wheel speeds read ~2.8% above GPS speed (median vEgo/GPS 1.028 over 19.6k samples, 29-144 km/h);
+    # the shared DBC wheel speed scale was tuned on the H6
+    if candidate == CAR.GWM_HAVAL_JOLION_HEV:
+      ret.wheelSpeedFactor = 0.973
 
     ret.alphaLongitudinalAvailable = True
     if alpha_long:
