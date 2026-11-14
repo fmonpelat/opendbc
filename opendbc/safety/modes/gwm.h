@@ -129,11 +129,11 @@ static void gwm_rx_hook(const CANPacket_t *msg) {
 
 static bool gwm_tx_hook(const CANPacket_t *msg) {
   const TorqueSteeringLimits GWM_TORQUE_STEERING_LIMITS = {
-    .max_torque = 253,
-    .max_rate_up = 4,
-    .max_rate_down = 6,
+    .max_torque = 300,  // stock camera LKA cap measured on the Jolion
+    .max_rate_up = 8,
+    .max_rate_down = 10,
     .max_torque_error = 80,
-    .max_rt_delta = 100,
+    .max_rt_delta = 150,  // ~1.5x of max_rate_up over 250 ms at 50 Hz
     .type = TorqueMotorLimited,
   };
 

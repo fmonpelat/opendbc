@@ -48,10 +48,10 @@ class TestGwmSafety(common.CarSafetyTest, common.MotorTorqueSteeringSafetyTest, 
   RELAY_MALFUNCTION_ADDRS = {0: (0x12B, 0x143, 0x23D), 2: (0x162,)}
   FWD_BLACKLISTED_ADDRS = {0: [0x162], 2: [0x12B, 0x143, 0x23D]}
 
-  MAX_RATE_UP = 4
-  MAX_RATE_DOWN = 6
-  MAX_TORQUE_LOOKUP = [0], [253]
-  MAX_RT_DELTA = 100
+  MAX_RATE_UP = 8
+  MAX_RATE_DOWN = 10
+  MAX_TORQUE_LOOKUP = [0], [300]
+  MAX_RT_DELTA = 150
   MAX_TORQUE_ERROR = 80
   TORQUE_MEAS_TOLERANCE = 1
 

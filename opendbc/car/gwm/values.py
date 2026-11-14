@@ -11,14 +11,21 @@ Ecu = CarParams.Ecu
 
 class CarControllerParams:
   STEER_STEP = 2
-  STEER_MAX = 253
   ACCEL_MAX = 2
   ACCEL_MIN = -3.5
 
   def __init__(self, CP: CarParams):
-    self.STEER_DELTA_UP = 4
-    self.STEER_DELTA_DOWN = 6
     self.STEER_ERROR_MAX = 80
+    if CP.carFingerprint == CAR.GWM_HAVAL_JOLION_HEV:
+      # Measured from the stock camera LKA in dashcam mode: TORQUE_CMD is capped at +-300 and the EPS follows it 1:1;
+      # stock |torque| changes up to ~10/frame (rising) and ~15/frame (falling) at 50 Hz
+      self.STEER_MAX = 300
+      self.STEER_DELTA_UP = 8
+      self.STEER_DELTA_DOWN = 10
+    else:
+      self.STEER_MAX = 253
+      self.STEER_DELTA_UP = 4
+      self.STEER_DELTA_DOWN = 6
 
 
 class GwmSafetyFlags(IntFlag):
