@@ -227,7 +227,7 @@ BO_ 696 UNDEFINED_INTERESTING_SIGNALS: 64 XXX
  SG_ LEAD_DISTANCE : 26|11@0+ (0.0625,0) [0|127.94] "m" XXX
  SG_ LEAD_SPEED : 23|13@0+ (0.03125,-128) [-128|127.97] "m/s" XXX
  SG_ LEAD_STATE : 70|2@0+ (1,0) [0|3] "" XXX
- SG_ LEAD_LATERAL : 79|10@0+ (-0.0625,32) [-32|32] "m" XXX
+ SG_ LEAD_LATERAL : 79|10@0+ (-0.125,64) [-64|64] "m" XXX
  SG_ UNDEFINED_ACCUMULATOR : 47|8@0+ (1,0) [0|255] "" XXX
  SG_ UNDEFINED_ACCUMULATOR2 : 47|12@0+ (1,0) [0|15] "" XXX
  SG_ UNDEFINED_SIGNAL3 : 51|12@0+ (1,0) [0|4095] "" XXX
@@ -267,7 +267,7 @@ CM_ SG_ 161 STEERING_ANGLE "0 CENTER, NO LEFT / RIGHT SIGNAL";
 CM_ SG_ 696 LEAD_DISTANCE "fused radar/camera distance to the ACC target; 0 when LEAD_STATE = 0";
 CM_ SG_ 696 LEAD_SPEED "absolute ground speed of the ACC target; forced to 0 when LEAD_STATE = 3";
 CM_ SG_ 696 LEAD_STATE "ACC target status; use only 1 and 3 as a valid lead";
-CM_ SG_ 696 LEAD_LATERAL "TENTATIVE: lateral offset of the ACC target, left positive; raw 512 = centered, scale not confirmed (0.04-0.07 m/bit fitted)";
+CM_ SG_ 696 LEAD_LATERAL "TENTATIVE: lateral offset of the ACC target, left positive, raw 512 = centered; 0 when LEAD_STATE = 3; scale from lane-change peaks (0.11-0.18 m/bit), likely relative to our predicted path, not the car frame; not used as yRel";
 CM_ SG_ 161 STEERING_DIRECTION "0 is counterclockwise and 1 is clockwise";
 CM_ SG_ 161 STEERING_RATE "Peak identified 3680, 0 = stopped";
 CM_ SG_ 161 AP_REDUCE_DISTANCE_COMMAND "AUTOPILOT STALK";
