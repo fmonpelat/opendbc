@@ -16,13 +16,15 @@ class CarControllerParams:
 
   def __init__(self, CP: CarParams):
     self.STEER_ERROR_MAX = 80
-    # The Jolion's stock camera LKA commands up to +-300 (ramping ~10 up / ~15 down per 50 Hz frame), but with our
-    # STEER_CMD the EPS stopped applying torque as soon as the command exceeded ~253 (2026-11-15, routes
-    # 000001ea/eb/ed) and stayed at 0 until the driver touched the wheel. Keep 253/4/6 until the gate is found
-    # (see BYPASSME_7 in LATERAL_STATE and steerFaultTemporary in interface.py).
     self.STEER_MAX = 253
     self.STEER_DELTA_UP = 4
     self.STEER_DELTA_DOWN = 6
+    if CP.carFingerprint == CAR.GWM_HAVAL_JOLION_HEV:
+      # Test step A2 (2026-11-15): the stock camera LKA commands up to +-300, but on 2026-11-15 our commands above ~253
+      # made the EPS stop applying torque. Since then our LATERAL_STATE (0x23D) carries the camera's bit 137
+      # (BYPASSME_7) and interface.py raises steerFaultTemporary if the EPS stops applying. Only STEER_MAX changes here;
+      # the rate limits stay at the known-good 4/6.
+      self.STEER_MAX = 300
 
 class GwmSafetyFlags(IntFlag):
   LONG_CONTROL = 1
