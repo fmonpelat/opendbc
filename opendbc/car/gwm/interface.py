@@ -39,7 +39,9 @@ class CarInterface(CarInterfaceBase):
     self.pcm_follow_distance = cp_cam.vl["ACC"]["CAR_DISTANCE_SELECTION"]
 
     ret, ret_sp = super().update(can_packets)
-    # ret.steerFaultTemporary |= self.steer_fault_temporary_counter > 100
+    # EPS stopped applying torque while we request it for > 1 s (100 Hz): seen when the command exceeded ~253,
+    # the EPS cut silently and stayed at 0 until the driver touched the wheel. Normal operation shows at most ~0.6 s.
+    ret.steerFaultTemporary |= self.steer_fault_temporary_counter > 100
     if (self.pcm_follow_distance == 4 and self.current_personality != 3) or \
        (self.pcm_follow_distance == 3 and self.current_personality != 3) or \
        (self.pcm_follow_distance == 2 and self.current_personality != 2) or \

@@ -147,6 +147,7 @@ def create_hud_command(packer, CAN: CanBus, hud_stock_values, steer_required):
     "BYPASSME_4",
     "BYPASSME_5",
     "BYPASSME_6",
+    "BYPASSME_7",  # bit 137: the camera always sends 1, see the DBC comment
     "CRUISE_STATE",
   ]}
 

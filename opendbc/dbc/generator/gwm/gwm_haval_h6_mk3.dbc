@@ -186,6 +186,7 @@ BO_ 573 LATERAL_STATE: 64 XXX
  SG_ BYPASSME_2 : 103|32@0+ (1,0) [0|4294967295] "" XXX
  SG_ CRC_X66 : 135|8@0+ (1,0) [0|255] "" XXX
  SG_ LKAS_STATE : 141|3@0+ (1,0) [0|3] "" XXX
+ SG_ BYPASSME_7 : 137|1@0+ (1,0) [0|1] "" XXX
  SG_ BY_PASSME : 146|39@0+ (1,0) [0|549755813887] "" XXX
  SG_ CRUISE_STATE : 151|5@0+ (1,0) [0|7] "" XXX
  SG_ COUNTER : 187|4@0+ (1,0) [0|15] "" XXX
@@ -267,6 +268,7 @@ CM_ SG_ 161 STEERING_ANGLE "0 CENTER, NO LEFT / RIGHT SIGNAL";
 CM_ SG_ 696 LEAD_DISTANCE "fused radar/camera distance to the ACC target; 0 when LEAD_STATE = 0";
 CM_ SG_ 696 LEAD_SPEED "absolute ground speed of the ACC target; forced to 0 when LEAD_STATE = 3";
 CM_ SG_ 696 LEAD_STATE "ACC target status; use only 1 and 3 as a valid lead";
+CM_ SG_ 573 BYPASSME_7 "camera always sends 1 (idle and steering); it was not in any signal, so openpilot sent 0. Suspected to gate EPS torque above ~253";
 CM_ SG_ 696 LEAD_LATERAL "TENTATIVE: lateral offset of the ACC target, left positive, raw 512 = centered; 0 when LEAD_STATE = 3; scale from lane-change peaks (0.11-0.18 m/bit), likely relative to our predicted path, not the car frame; not used as yRel";
 CM_ SG_ 161 STEERING_DIRECTION "0 is counterclockwise and 1 is clockwise";
 CM_ SG_ 161 STEERING_RATE "Peak identified 3680, 0 = stopped";
