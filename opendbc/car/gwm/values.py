@@ -22,7 +22,7 @@ class CarControllerParams:
     if CP.carFingerprint == CAR.GWM_HAVAL_JOLION_HEV:
       # Test step A2 (2026-11-15): the stock camera LKA commands up to +-300, but on 2026-11-15 our commands above ~253
       # made the EPS stop applying torque. Since then our LATERAL_STATE (0x23D) carries the camera's bit 137
-      # (BYPASSME_7) and interface.py raises steerFaultTemporary if the EPS stops applying. Only STEER_MAX changes here;
+      # (LANE_ASSIST_ON) and interface.py raises steerFaultTemporary if the EPS stops applying. Only STEER_MAX changes here;
       # the rate limits stay at the known-good 4/6.
       self.STEER_MAX = 300
 
