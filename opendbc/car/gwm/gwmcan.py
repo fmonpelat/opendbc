@@ -137,7 +137,7 @@ def create_buttons_command(packer, CAN: CanBus, counter, stock_msg, cancel_comma
   return packer.make_can_msg('STEER_AND_AP_STALK', CAN.camera, values)
 
 
-def create_hud_command(packer, CAN: CanBus, hud_stock_values, steer_required):
+def create_hud_command(packer, CAN: CanBus, hud_stock_values, steer_required, report_steering=False):
   values = {s: hud_stock_values[s] for s in [
     "BYPASSME_1",
     "BYPASSME_2",
@@ -154,6 +154,10 @@ def create_hud_command(packer, CAN: CanBus, hud_stock_values, steer_required):
   values |= {
     "LKAS_STATE": 5 if steer_required else hud_stock_values["LKAS_STATE"],
   }
+  # Jolion test: while openpilot steers, report the lane assist state as steering (7, stock at high torque) instead of the
+  # idle camera's standby (4); stock, the EPS took more than 253 only with 7/11. Off (0) and fault (24) are passed through
+  if report_steering and steer_required and values["CRUISE_STATE"] == 4:
+    values["CRUISE_STATE"] = 7
 
   data = packer.make_can_msg("LATERAL_STATE", 0, values)[1]
   values["CRC_X66"] = checksum(data[17:24], 0x66)
