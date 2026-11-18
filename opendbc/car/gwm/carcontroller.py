@@ -4,7 +4,7 @@ from opendbc.car import Bus, structs
 from opendbc.car.lateral import apply_meas_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.gwm import gwmcan
-from opendbc.car.gwm.values import CarControllerParams
+from opendbc.car.gwm.values import CAR, CarControllerParams
 
 LongCtrlState = structs.CarControl.Actuators.LongControlState
 
@@ -17,6 +17,7 @@ class CarController(CarControllerBase):
     self.params = CarControllerParams(self.CP)
     self.packer = CANPacker(dbc_names[Bus.main])
     self.apply_torque_last = 0
+    self.eps_counter_last = None
     self.CAN = gwmcan.CanBus(CP)
     self.accel = 0.0
 
@@ -54,8 +55,17 @@ class CarController(CarControllerBase):
       ))
       self.apply_torque_last = apply_torque
 
-      # Satisfy steer nudge requests
-      ea_simulated_torque = float(np.clip(apply_torque * 2, -self.params.STEER_MAX, self.params.STEER_MAX))
+    # EPS feedback to the camera with a simulated driver torque, to satisfy the camera's steer nudge requests.
+    # Jolion: mirror each EPS frame once (new COUNTER). The EPS stops sending 0x162 for ~120 ms every ~655 s; on a fixed
+    # 50 Hz tick we kept resending its last frame with the same COUNTER and, with lane assist enabled, the camera raised
+    # LSS fault (stock, the camera only sees the silence and tolerates it)
+    if self.CP.carFingerprint == CAR.GWM_HAVAL_JOLION_HEV:
+      send_wheel_touch = CS.eps_stock_values["COUNTER"] != self.eps_counter_last
+    else:
+      send_wheel_touch = self.frame % 2 == 0
+    if send_wheel_touch:
+      self.eps_counter_last = CS.eps_stock_values["COUNTER"]
+      ea_simulated_torque = float(np.clip(self.apply_torque_last * 2, -self.params.STEER_MAX, self.params.STEER_MAX))
       if abs(CS.out.steeringTorque) > abs(ea_simulated_torque):
         ea_simulated_torque = CS.out.steeringTorque
       can_sends.append(gwmcan.create_wheel_touch(
