@@ -2,7 +2,7 @@ from opendbc.car import Bus, CanBusBase, structs
 from opendbc.can.parser import CANParser
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.interfaces import CarStateBase
-from opendbc.car.gwm.values import DBC
+from opendbc.car.gwm.values import CAR, DBC
 import copy
 
 GearShifter = structs.CarState.GearShifter
@@ -88,8 +88,13 @@ class CarState(CarStateBase):
       self.main_on = True
     self.prev_activation_lever_pulled = self.is_activation_lever_pulled
     ret.cruiseState.available = self.main_on
+    # Jolion: each press of the ON/OFF button sends a CRUISEMAIN_ON pulse and cycles the camera ACC -> TJA -> OFF, so main_on
+    # stays set on the third press; the camera's ADAS_MODE_ON drops then. main_on stays in the AND because the panda only
+    # leaves lateral control on CRUISEMAIN_OFF
+    if self.CP.carFingerprint == CAR.GWM_HAVAL_JOLION_HEV:
+      ret.cruiseState.available = self.main_on and bool(cp_cam.vl["ACC"]["ADAS_MODE_ON"])
 
-    if self.main_on:
+    if ret.cruiseState.available:
       if ((cp.vl["STEER_AND_AP_STALK"]["AP_DECREASE_SPEED_COMMAND"]) or (cp.vl["STEER_AND_AP_STALK"]["AP_INCREASE_SPEED_COMMAND"])):
         self.pcm_cruise_enabled = True
     else:
