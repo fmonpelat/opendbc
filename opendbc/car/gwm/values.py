@@ -20,11 +20,12 @@ class CarControllerParams:
     self.STEER_DELTA_UP = 4
     self.STEER_DELTA_DOWN = 6
     if CP.carFingerprint == CAR.GWM_HAVAL_JOLION_HEV:
-      # Test step A2 (2026-11-15): the stock camera LKA commands up to +-300, but on 2026-11-15 our commands above ~253
-      # made the EPS stop applying torque. Since then our LATERAL_STATE (0x23D) carries the camera's bit 137
-      # (LANE_ASSIST_ON) and interface.py raises steerFaultTemporary if the EPS stops applying. Only STEER_MAX changes here;
-      # the rate limits stay at the known-good 4/6.
-      self.STEER_MAX = 300
+      # The stock camera LKA commands up to +-300, but the EPS stops applying any openpilot command above ~253 (routes
+      # 000001ea-ed, 000001fe), so the cap stays at 253. Rates follow the stock LKA, measured per 50 Hz frame: up p99 5-9
+      # (max 11), down p99 10 (max 15). Up is 7, not 8: at 253 it is the highest that keeps the up jerk within the ISO 11270
+      # limit of test_lateral_limits (2.81 m/s^3)
+      self.STEER_DELTA_UP = 7
+      self.STEER_DELTA_DOWN = 10
 
 class GwmSafetyFlags(IntFlag):
   LONG_CONTROL = 1

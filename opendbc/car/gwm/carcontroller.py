@@ -101,7 +101,6 @@ class CarController(CarControllerBase):
         self.CAN,
         hud_stock_values=CS.hud_stock_values,
         steer_required=CC.latActive,
-        report_steering=self.CP.carFingerprint == CAR.GWM_HAVAL_JOLION_HEV,
       ))
 
     new_actuators = actuators.as_builder()
