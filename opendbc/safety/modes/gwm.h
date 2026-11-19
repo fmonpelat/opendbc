@@ -216,7 +216,7 @@ static safety_config gwm_init(uint16_t param) {
   gwm_stalk_main_on = false;
   gwm_camera_mode_on = false;
 
-  const int FLAG_GWM_JOLION = 2;
+  const uint16_t FLAG_GWM_JOLION = 2U;
   gwm_jolion = GET_FLAG(param, FLAG_GWM_JOLION);
 
   bool gwm_longitudinal = false;
