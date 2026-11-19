@@ -21,6 +21,8 @@ class CarState(CarStateBase):
     self.is_activation_lever_pulled = False
     self.prev_activation_lever_pulled = False
     self.main_on = False
+    self.mode_settle_frames = 0
+    self.available_prev = False
     self.pcm_cruise_enabled = False
     self.steer_fault_temporary_counter = 0
 
@@ -86,13 +88,21 @@ class CarState(CarStateBase):
     self.is_activation_lever_pulled = bool(cp.vl["STEER_AND_AP_STALK"]["JOLION_CRUISEMAIN_ON"])
     if not self.is_activation_lever_pulled and self.prev_activation_lever_pulled and not self.main_on:
       self.main_on = True
-    self.prev_activation_lever_pulled = self.is_activation_lever_pulled
     ret.cruiseState.available = self.main_on
     # Jolion: each press of the ON/OFF button sends a CRUISEMAIN_ON pulse and cycles the camera ACC -> TJA -> OFF, so main_on
     # stays set on the third press; the camera's ADAS_MODE_ON drops then. main_on stays in the AND because the panda only
     # leaves lateral control on CRUISEMAIN_OFF
     if self.CP.carFingerprint == CAR.GWM_HAVAL_JOLION_HEV:
-      ret.cruiseState.available = self.main_on and bool(cp_cam.vl["ACC"]["ADAS_MODE_ON"])
+      pressed = self.is_activation_lever_pulled and not self.prev_activation_lever_pulled
+      self.mode_settle_frames = 25 if pressed else max(self.mode_settle_frames - 1, 0)
+      available = self.main_on and bool(cp_cam.vl["ACC"]["ADAS_MODE_ON"])
+      # the camera switches mode 70-180 ms after a press and 0x2AB comes at 10 Hz: a rise within 250 ms of a press waits for
+      # it, else re-arming main_on (after CRUISEMAIN_OFF) on a TJA -> OFF press raises available until the camera reports OFF
+      if available and not self.available_prev and self.mode_settle_frames > 0:
+        available = False
+      self.available_prev = available
+      ret.cruiseState.available = available
+    self.prev_activation_lever_pulled = self.is_activation_lever_pulled
 
     if ret.cruiseState.available:
       if ((cp.vl["STEER_AND_AP_STALK"]["AP_DECREASE_SPEED_COMMAND"]) or (cp.vl["STEER_AND_AP_STALK"]["AP_INCREASE_SPEED_COMMAND"])):
