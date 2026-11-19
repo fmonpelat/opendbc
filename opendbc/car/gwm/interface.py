@@ -65,6 +65,8 @@ class CarInterface(CarInterfaceBase):
       cfgs.insert(0, get_safety_config(structs.CarParams.SafetyModel.noOutput))
 
     ret.safetyConfigs = cfgs
+    if candidate == CAR.GWM_HAVAL_JOLION_HEV:
+      ret.safetyConfigs[-1].safetyParam |= GwmSafetyFlags.JOLION.value
 
     ret.dashcamOnly = False
 

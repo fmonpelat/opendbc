@@ -64,6 +64,8 @@ class TestGwmSafety(common.CarSafetyTest, common.MotorTorqueSteeringSafetyTest, 
   MAX_BRAKE = 107
   MAX_POSSIBLE_BRAKE = 180
 
+  JOLION = False
+
   def setUp(self):
     self.packer = CANPackerSafety(opendbc)
     self.safety = libsafety_py.libsafety
@@ -91,6 +93,16 @@ class TestGwmSafety(common.CarSafetyTest, common.MotorTorqueSteeringSafetyTest, 
       "AP_INCREASE_SPEED_COMMAND": res_plus,
     }
     return self.packer.make_can_msg_safety("STEER_AND_AP_STALK", 0, values, fix_checksum=checksum)
+
+  def _camera_mode_msg(self, on):
+    # camera ACC message (0x2AB): ADAS_MODE_ON is 1 in ACC and TJA modes, 0 in OFF
+    return self.packer.make_can_msg_safety("ACC", 2, {"ADAS_MODE_ON": on})
+
+  def test_camera_mode_only_gates_main_on_jolion(self):
+    self._rx(self._camera_mode_msg(False))
+    self._rx(self._buttons_msg(main_on=True))
+    self._rx(self._buttons_msg())
+    self.assertEqual(self.safety.get_acc_main_on(), not self.JOLION)
 
   def _pcm_status_msg(self, enable):
     # engaged: CRUISEMAIN_ON + SET-, disengaged: CRUISEMAIN_OFF
@@ -166,6 +178,53 @@ class TestGwmSafety(common.CarSafetyTest, common.MotorTorqueSteeringSafetyTest, 
     msg = self._pcm_status_msg(0)
     msg[0].data[0] = 0xFF
     self.assertFalse(self._rx(msg))
+
+
+class TestGwmJolionSafety(TestGwmSafety):
+  JOLION = True
+
+  def setUp(self):
+    self.packer = CANPackerSafety(opendbc)
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(CarParams.SafetyModel.gwm, GwmSafetyFlags.LONG_CONTROL | GwmSafetyFlags.JOLION)
+    self.safety.init_tests()
+    self._rx(self._camera_mode_msg(True))
+
+  def test_camera_off_drops_main_and_controls(self):
+    # third ON/OFF press: the stalk sends the same CRUISEMAIN_ON pulse, only the camera mode tells OFF
+    self._rx(self._buttons_msg(main_on=True))
+    self._rx(self._buttons_msg(set_minus=True))
+    self.assertTrue(self.safety.get_controls_allowed())
+    self._rx(self._camera_mode_msg(False))
+    self._rx(self._buttons_msg())
+    self.assertFalse(self.safety.get_acc_main_on())
+    self.assertFalse(self.safety.get_controls_allowed())
+    # next press, camera back in ACC: main is on again without a new CRUISEMAIN_ON edge, engaging needs SET again
+    self._rx(self._camera_mode_msg(True))
+    self._rx(self._buttons_msg())
+    self.assertTrue(self.safety.get_acc_main_on())
+    self.assertFalse(self.safety.get_controls_allowed())
+
+  def test_camera_mode_cycles_mads_lateral(self):
+    self.safety.set_mads_params(True, False, False)
+    self._rx(self._buttons_msg(main_on=True))
+    self._rx(self._buttons_msg())
+    self.assertTrue(self.safety.get_controls_allowed_lateral())
+    self._rx(self._camera_mode_msg(False))
+    self._rx(self._buttons_msg())
+    self.assertFalse(self.safety.get_controls_allowed_lateral())
+    # camera back in ACC: lateral is allowed again on the same edge openpilot re-engages on
+    self._rx(self._camera_mode_msg(True))
+    self._rx(self._buttons_msg())
+    self.assertTrue(self.safety.get_controls_allowed_lateral())
+
+  def test_main_off_button_overrides_camera_mode(self):
+    self._rx(self._buttons_msg(main_on=True))
+    self._rx(self._buttons_msg())
+    self.assertTrue(self.safety.get_acc_main_on())
+    self._rx(self._buttons_msg(main_off=True))
+    self._rx(self._buttons_msg())
+    self.assertFalse(self.safety.get_acc_main_on())
 
 
 if __name__ == "__main__":

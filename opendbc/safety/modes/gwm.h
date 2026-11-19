@@ -18,6 +18,9 @@
 #define GWM_CAMERA_BUS  2U
 
 static bool gwm_pcm_cruise_enabled = false;
+static bool gwm_jolion = false;
+static bool gwm_stalk_main_on = false;   // armed by CRUISEMAIN_ON, cleared by CRUISEMAIN_OFF
+static bool gwm_camera_mode_on = false;  // Jolion: camera in ACC or TJA mode (0x2AB ADAS_MODE_ON)
 
 static uint8_t gwm_get_counter(const CANPacket_t *msg) {
   uint8_t cnt = 0;
@@ -101,13 +104,16 @@ static void gwm_rx_hook(const CANPacket_t *msg) {
       bool cruise_button = GET_BIT(msg, 53U);
       // CRUISEMAIN_ON button (bit 53): rising edge arms ACC main
       if (cruise_button && !cruise_button_prev) {
-        acc_main_on = true;
+        gwm_stalk_main_on = true;
       }
       // CRUISEMAIN_OFF button (bit 52): disarms ACC main and exits controls
       bool cancel_button = GET_BIT(msg, 52U);
       if (cancel_button) {
-        acc_main_on = false;
+        gwm_stalk_main_on = false;
       }
+      // Jolion: every ON/OFF press sends the same CRUISEMAIN_ON pulse and cycles the camera ACC -> TJA -> OFF, so the
+      // stalk alone cannot tell OFF; the camera's mode drops ACC main there and raises it again on the next press
+      acc_main_on = gwm_stalk_main_on && (!gwm_jolion || gwm_camera_mode_on);
 
       if (acc_main_on) {
         bool activation_button = GET_BIT(msg, 50U);
@@ -124,6 +130,11 @@ static void gwm_rx_hook(const CANPacket_t *msg) {
       pcm_cruise_check(gwm_pcm_cruise_enabled);
       cruise_button_prev =  cruise_button ? 1 : 0;
     }
+  }
+
+  // Jolion: camera mode, ADAS_MODE_ON (bit 145): 1 in ACC and TJA, 0 in OFF
+  if ((msg->bus == GWM_CAMERA_BUS) && (msg->addr == GWM_CRUISE)) {
+    gwm_camera_mode_on = GET_BIT(msg, 145U);
   }
 }
 
@@ -202,13 +213,16 @@ static safety_config gwm_init(uint16_t param) {
   };
 
   gwm_pcm_cruise_enabled = false;
+  gwm_stalk_main_on = false;
+  gwm_camera_mode_on = false;
+
+  const int FLAG_GWM_JOLION = 2;
+  gwm_jolion = GET_FLAG(param, FLAG_GWM_JOLION);
 
   bool gwm_longitudinal = false;
   #ifdef ALLOW_DEBUG
    const int FLAG_GWM_LONG_CONTROL = 1;
    gwm_longitudinal = GET_FLAG(param, FLAG_GWM_LONG_CONTROL);
- #else
-   SAFETY_UNUSED(param);
  #endif
 
   // FIXME: cppcheck thinks that gwm_longitudinal is always false. This is not true

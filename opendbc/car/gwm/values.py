@@ -28,6 +28,7 @@ class CarControllerParams:
 
 class GwmSafetyFlags(IntFlag):
   LONG_CONTROL = 1
+  JOLION = 2  # ACC main also follows the camera mode (0x2AB ADAS_MODE_ON)
 
 
 @dataclass

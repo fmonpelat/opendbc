@@ -991,6 +991,8 @@ class SafetyTest(SafetyTestBase):
               continue
             if attr.startswith('TestChryslerRamHD') and current_test.startswith('TestChryslerRamHD'):
               continue
+            if attr.startswith('TestGwm') and current_test.startswith('TestGwm'):
+              continue
             if attr.startswith('TestHyundaiCanfd') and current_test.startswith('TestHyundaiCanfd'):
               continue
             if {attr, current_test}.issubset({'TestHyundaiLongitudinalSafety', 'TestHyundaiLongitudinalSafetyCameraSCC', 'TestHyundaiSafetyFCEVLong'}):
@@ -1020,7 +1022,7 @@ class SafetyTest(SafetyTestBase):
               tx = list(filter(lambda m: m[0] not in [0x30c, ], tx))
 
             # Volkswagen MQB and GWM STEER_CMD messages overlap
-            if attr == 'TestGwmSafety' and current_test.startswith('TestVolkswagenMqbStockSafety'):
+            if attr.startswith('TestGwm') and current_test.startswith('TestVolkswagenMqbStockSafety'):
               tx = list(filter(lambda m: m[0] not in [0x12b, ], tx))
 
             # Rivian and GWM (Jolion EPS feedback) 0x162 messages overlap on bus 2
