@@ -17,6 +17,7 @@ class CarController(CarControllerBase):
     self.params = CarControllerParams(self.CP)
     self.packer = CANPacker(dbc_names[Bus.main])
     self.apply_torque_last = 0
+    self.steer_req_last = False
     self.eps_counter_last = None
     self.CAN = gwmcan.CanBus(CP)
     self.accel = 0.0
@@ -54,6 +55,7 @@ class CarController(CarControllerBase):
         steer_req=lat_active,
       ))
       self.apply_torque_last = apply_torque
+      self.steer_req_last = lat_active
 
     # EPS feedback to the camera with a simulated driver torque, to satisfy the camera's steer nudge requests.
     # Jolion: mirror each EPS frame once (new COUNTER). The EPS stops sending 0x162 for ~120 ms every ~655 s; on a fixed

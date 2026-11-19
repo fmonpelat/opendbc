@@ -16,7 +16,6 @@ class CarInterface(CarInterfaceBase):
 
   def __init__(self, CP, CP_SP):
       super().__init__(CP, CP_SP)
-      self.lat_active = False
       self.isEPSobeying = True
       self.steer_fault_temporary_counter = 0
       self.current_personality = 0
@@ -24,7 +23,6 @@ class CarInterface(CarInterfaceBase):
       self.press_gac_button = False
 
   def apply(self, CC, CC_SP, now_nanos=None):
-    self.lat_active = CC.latActive
     hud_control = CC.hudControl
     self.current_personality = hud_control.leadDistanceBars
     return super().apply(CC, CC_SP, now_nanos)
@@ -32,7 +30,8 @@ class CarInterface(CarInterfaceBase):
   def update(self, can_packets):
     cp = self.can_parsers[Bus.main]
     self.isEPSobeying = cp.vl["RX_FROM_EPS_162"]["RX_EPS_APPLYING_TORQUE"] == 1
-    self.steer_fault_temporary_counter = (self.steer_fault_temporary_counter + 1) if (self.lat_active and not self.isEPSobeying) \
+    # count only while we send STEER_REQUEST: the controller drops it on driver override, and the EPS then stops applying
+    self.steer_fault_temporary_counter = (self.steer_fault_temporary_counter + 1) if (self.CC.steer_req_last and not self.isEPSobeying) \
                                           else 0
 
     cp_cam = self.can_parsers[Bus.cam]
